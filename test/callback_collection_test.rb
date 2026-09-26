@@ -3,6 +3,22 @@
 require_relative "test_helper"
 
 class CallbackCollectionTest < Minitest::Test
+  module RactorHandlers
+    module_function
+
+    def sum(left, right)
+      left + right
+    end
+
+    def describe(name:, active: false)
+      "#{name}: #{active}"
+    end
+
+    def transform(value)
+      yield(value)
+    end
+  end
+
   def setup
     @callbacks = CallbackCollection.new do |collection|
       collection.greet { |name| "Hello, #{name}!" }
@@ -23,6 +39,7 @@ class CallbackCollectionTest < Minitest::Test
     callbacks = CallbackCollection.new
 
     refute_respond_to callbacks, :anything
+    assert_predicate callbacks, :frozen?
     assert_predicate callbacks.send(:callbacks), :frozen?
   end
 
@@ -99,6 +116,45 @@ class CallbackCollectionTest < Minitest::Test
     assert_equal 2, callbacks.respond_with(:second)
   end
 
+  def test_registers_a_callback_receiver
+    callbacks = CallbackCollection.new do |collection|
+      collection
+        .register(:sum, RactorHandlers)
+        .register(:total, RactorHandlers, :sum)
+    end
+
+    assert_equal 5, callbacks.respond_with(:sum, 2, 3)
+    assert_equal 9, callbacks.respond_with(:total, 4, 5)
+  end
+
+  def test_registered_callback_forwards_keywords_and_blocks
+    callbacks = CallbackCollection.new do |collection|
+      collection.register(:describe, RactorHandlers)
+      collection.register(:transform, RactorHandlers)
+    end
+
+    assert_equal "Ruby: true", callbacks.respond_with(:describe, name: "Ruby", active: true)
+    assert_equal "RUBY", callbacks.respond_with(:transform, "ruby", &:upcase)
+  end
+
+  def test_registered_callbacks_are_shareable_with_ractors
+    skip "Ractor is unavailable" unless defined?(Ractor)
+
+    callbacks = CallbackCollection.new do |collection|
+      collection.register(:sum, RactorHandlers)
+    end
+
+    assert Ractor.shareable?(callbacks)
+
+    worker = Ractor.new(callbacks) do |collection|
+      collection.respond_with(:sum, 20, 22)
+    end
+
+    result = worker.respond_to?(:value) ? worker.value : worker.take
+
+    assert_equal 42, result
+  end
+
   def test_reports_defined_callbacks
     assert_respond_to @callbacks, :greet
     assert_respond_to @callbacks, :sum
@@ -132,6 +188,15 @@ class CallbackCollectionTest < Minitest::Test
   def test_cannot_add_a_callback_after_initialization
     error = assert_raises(FrozenError) do
       @callbacks.later { :result }
+    end
+
+    assert_equal "Cannot define a callback after initialization.", error.message
+    refute_respond_to @callbacks, :later
+  end
+
+  def test_cannot_register_a_callback_after_initialization
+    error = assert_raises(FrozenError) do
+      @callbacks.register(:later, RactorHandlers)
     end
 
     assert_equal "Cannot define a callback after initialization.", error.message

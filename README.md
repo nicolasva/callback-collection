@@ -40,6 +40,47 @@ callbacks.respond_with(:success, "Ruby")
 La collection est figée à la fin de son initialisation. Toute tentative
 d'ajouter ensuite un callback lève une `FrozenError`.
 
+### Ractors (Ruby 3.0 et versions ultérieures)
+
+Les blocs conservent leur contexte lexical et ne peuvent donc pas être partagés
+entre Ractors. Pour créer une collection partageable, enregistrez plutôt un
+objet partageable et l'une de ses méthodes :
+
+```ruby
+module Handlers
+  def self.sum(left, right)
+    left + right
+  end
+end
+
+callbacks = CallbackCollection.new do |collection|
+  collection.register(:sum, Handlers)
+end
+
+Ractor.shareable?(callbacks)
+# => true
+
+worker = Ractor.new(callbacks) do |collection|
+  collection.respond_with(:sum, 20, 22)
+end
+
+result = worker.respond_to?(:value) ? worker.value : worker.take
+result
+# => 42
+```
+
+Le troisième argument de `register` permet d'utiliser un nom de méthode
+différent du nom du callback :
+
+```ruby
+collection.register(:total, Handlers, :sum)
+```
+
+Le receveur enregistré et les données qu'il utilise doivent eux-mêmes respecter
+les règles de partage des Ractors. L'appel à `respond_with` reste identique.
+Sous Ruby 2.7, la gem et `register` restent utilisables normalement ; seule
+l'exécution avec `Ractor` est indisponible.
+
 ## Développement
 
 ```sh
@@ -70,8 +111,9 @@ Publiez ensuite une version en poussant le tag correspondant à
 `CallbackCollection::VERSION` :
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+VERSION=$(ruby -Ilib -rcallback_collection/version -e 'print CallbackCollection::VERSION')
+git tag "v${VERSION}"
+git push origin "v${VERSION}"
 ```
 
 GitHub Actions construit et publie alors la gem. RubyDoc génère
