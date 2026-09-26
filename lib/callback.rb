@@ -1,0 +1,40 @@
+# frozen_string_literal: true
+
+require_relative "callback/version"
+
+module Callback
+  class CallbackCollection
+    def initialize
+      callbacks
+      yield(self) if block_given?
+      callbacks.freeze
+    end
+
+    def respond_with(callback, *args, **kwargs, &block)
+      callbacks.fetch(callback) do
+        raise NoMethodError, "No callback '#{callback}' is defined."
+      end.call(*args, **kwargs, &block)
+    end
+
+    def method_missing(method_name, *args, &block)
+      if block
+        raise FrozenError, "Cannot define a callback after initialization." if callbacks.frozen?
+
+        callbacks[method_name] = block
+        self
+      else
+        super
+      end
+    end
+
+    def respond_to_missing?(method_name, include_private = false)
+      callbacks.key?(method_name) || super
+    end
+
+    protected
+
+    def callbacks
+      @callbacks ||= {}
+    end
+  end
+end
