@@ -11,9 +11,13 @@ module Callback
     end
 
     def respond_with(callback, *args, **kwargs, &block)
-      callbacks.fetch(callback) do
+      handler = callbacks.fetch(callback) do
         raise NoMethodError, "No callback '#{callback}' is defined."
-      end.call(*args, **kwargs, &block)
+      end
+
+      return handler.call(*args, &block) if kwargs.empty?
+
+      handler.call(*args, **kwargs, &block)
     end
 
     def method_missing(method_name, *args, &block)

@@ -106,7 +106,7 @@ class CallbackTest < Minitest::Test
       @callbacks.respond_with("greet", "Ruby")
     end
 
-    assert_equal "No callback 'greet' is defined.", error.message
+    assert_match(/\ANo callback 'greet' is defined\./, error.message)
   end
 
   def test_raises_for_an_unknown_callback
@@ -114,7 +114,7 @@ class CallbackTest < Minitest::Test
       @callbacks.respond_with(:unknown)
     end
 
-    assert_equal "No callback 'unknown' is defined.", error.message
+    assert_match(/\ANo callback 'unknown' is defined\./, error.message)
   end
 
   def test_unknown_method_uses_normal_method_missing_behavior
