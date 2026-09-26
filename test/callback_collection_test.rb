@@ -2,21 +2,25 @@
 
 require_relative "test_helper"
 
-class CallbackTest < Minitest::Test
+class CallbackCollectionTest < Minitest::Test
   def setup
-    @callbacks = Callback::CallbackCollection.new do |collection|
+    @callbacks = CallbackCollection.new do |collection|
       collection.greet { |name| "Hello, #{name}!" }
       collection.sum { |left, right| left + right }
     end
   end
 
   def test_exposes_a_version
-    refute_empty Callback::VERSION
-    assert_match(/\A\d+\.\d+\.\d+\z/, Callback::VERSION)
+    refute_empty CallbackCollection::VERSION
+    assert_match(/\A\d+\.\d+\.\d+\z/, CallbackCollection::VERSION)
+  end
+
+  def test_uses_the_callback_collection_class_name
+    assert_equal "CallbackCollection", CallbackCollection.name
   end
 
   def test_initializes_without_a_block
-    callbacks = Callback::CallbackCollection.new
+    callbacks = CallbackCollection.new
 
     refute_respond_to callbacks, :anything
     assert_predicate callbacks.send(:callbacks), :frozen?
@@ -25,7 +29,7 @@ class CallbackTest < Minitest::Test
   def test_yields_the_collection_during_initialization
     yielded_collection = nil
 
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       yielded_collection = collection
     end
 
@@ -38,7 +42,7 @@ class CallbackTest < Minitest::Test
   end
 
   def test_forwards_keyword_arguments
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       collection.describe { |name:, active: false| "#{name}: #{active}" }
     end
 
@@ -47,7 +51,7 @@ class CallbackTest < Minitest::Test
   end
 
   def test_forwards_a_block
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       collection.transform { |value, &transformer| transformer.call(value) }
     end
 
@@ -57,7 +61,7 @@ class CallbackTest < Minitest::Test
   end
 
   def test_preserves_nil_and_false_return_values
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       collection.nothing { nil }
       collection.negative { false }
     end
@@ -68,7 +72,7 @@ class CallbackTest < Minitest::Test
 
   def test_callback_keeps_its_lexical_scope
     prefix = "Hello"
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       collection.greet { |name| "#{prefix}, #{name}!" }
     end
 
@@ -76,7 +80,7 @@ class CallbackTest < Minitest::Test
   end
 
   def test_last_definition_wins
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       collection.status { :first }
       collection.status { :second }
     end
@@ -85,7 +89,7 @@ class CallbackTest < Minitest::Test
   end
 
   def test_callback_definitions_can_be_chained
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       collection
         .first { 1 }
         .second { 2 }
@@ -135,7 +139,7 @@ class CallbackTest < Minitest::Test
   end
 
   def test_lambda_argument_errors_are_not_hidden
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       collection.strict_sum(&->(left, right) { left + right })
     end
 
@@ -148,7 +152,7 @@ class CallbackTest < Minitest::Test
 
   def test_callback_errors_are_not_hidden
     original_error = RuntimeError.new("callback failed")
-    callbacks = Callback::CallbackCollection.new do |collection|
+    callbacks = CallbackCollection.new do |collection|
       collection.fail { raise original_error }
     end
 

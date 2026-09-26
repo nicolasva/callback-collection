@@ -3,7 +3,7 @@
 require "rubygems/package_task"
 require "minitest/test_task"
 
-gemspec = Gem::Specification.load("callback.gemspec")
+gemspec = Gem::Specification.load("callback-collection.gemspec")
 
 Minitest::TestTask.create do |task|
   task.test_globs = ["test/**/*_test.rb"]

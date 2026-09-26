@@ -1,4 +1,10 @@
-# Callback
+# Callback Collection
+
+[![Build Status](https://github.com/nicolasva/callback/actions/workflows/ci.yml/badge.svg)](https://github.com/nicolasva/callback/actions/workflows/ci.yml)
+[![Code Climate](https://codeclimate.com/github/nicolasva/callback.svg)](https://codeclimate.com/github/nicolasva/callback)
+[![Gem Version](https://badge.fury.io/rb/callback-collection.svg)](https://badge.fury.io/rb/callback-collection)
+[![Documentation Status](https://inch-ci.org/github/nicolasva/callback.svg?branch=main)](https://inch-ci.org/github/nicolasva/callback)
+[![Downloads](https://img.shields.io/gem/dt/callback-collection.svg?style=flat)](https://rubygems.org/gems/callback-collection)
 
 Une petite gem Ruby permettant de définir une collection immuable de callbacks
 nommés.
@@ -8,22 +14,22 @@ nommés.
 Construisez puis installez la gem localement :
 
 ```sh
-gem build callback.gemspec
-gem install callback-0.1.0.gem
+gem build callback-collection.gemspec
+gem install callback-collection-0.1.0.gem
 ```
 
 Dans un projet Bundler local, vous pouvez aussi ajouter :
 
 ```ruby
-gem "callback", path: "/Users/nicolasvandenbogaerde/VANDENBOGAERDE_Nicolas/ruby/callback"
+gem "callback-collection", path: "/path/to/callback-collection"
 ```
 
 ## Utilisation
 
 ```ruby
-require "callback"
+require "callback_collection"
 
-callbacks = Callback::CallbackCollection.new do |collection|
+callbacks = CallbackCollection.new do |collection|
   collection.success { |name| "Bienvenue, #{name} !" }
   collection.failure { |error| "Erreur : #{error.message}" }
 end
