@@ -6,45 +6,74 @@
 [![Documentation Status](https://img.shields.io/badge/docs-RubyDoc.info-blue.svg)](https://www.rubydoc.info/gems/callback-collection)
 [![Downloads](https://img.shields.io/gem/dt/callback-collection.svg?style=flat)](https://rubygems.org/gems/callback-collection)
 
-Une petite gem Ruby permettant de définir une collection immuable de callbacks
-nommés.
+A small Ruby gem for defining an immutable collection of named callbacks.
+
+## Why Callback Collection?
+
+`CallbackCollection` groups callback definitions during initialization and
+exposes a single `respond_with` interface for invoking them. The registry
+becomes immutable once constructed, preventing late additions and making its
+behavior easier to test and reason about.
+
+The gem does not replace framework callbacks or start threads or Ractors
+itself. It provides an independent container that applications can use within
+their own execution model.
+
+## Architectural highlights
+
+- **Immutable after initialization:** the collection and its internal registry
+  are frozen when the configuration block completes. Callback definitions can
+  then be read concurrently by multiple threads without mutating shared
+  registry state.
+- **Optional Ractor compatibility:** on Ruby 3.0 and later, `register` stores a
+  receiver and method name instead of a closure. The collection is shareable
+  when the receiver and all the state it uses are also Ractor-shareable.
+- **Ruby 2.7 and later:** the standard API and `register` do not depend on
+  `Ractor`. Applications running Ruby 2.7 retain the immutable registry and
+  concurrent thread-read behavior.
+- **Direct lookup:** `respond_with` uses `Hash#fetch` to find a callback in one
+  operation and raises an explicit error when it does not exist.
+
+Immutability protects the registry, not automatically the code executed by its
+callbacks. A callback that accesses mutable shared state remains responsible
+for its own synchronization.
 
 ## Installation
 
-Installez la gem depuis RubyGems :
+Install the gem from RubyGems:
 
 ```sh
 gem install callback-collection
 ```
 
-Avec Bundler, ajoutez-la au `Gemfile` :
+With Bundler, add it to your `Gemfile`:
 
 ```ruby
 gem "callback-collection"
 ```
 
-## Utilisation
+## Usage
 
 ```ruby
 require "callback_collection"
 
 callbacks = CallbackCollection.new do |collection|
-  collection.success { |name| "Bienvenue, #{name} !" }
-  collection.failure { |error| "Erreur : #{error.message}" }
+  collection.success { |name| "Welcome, #{name}!" }
+  collection.failure { |error| "Error: #{error.message}" }
 end
 
 callbacks.respond_with(:success, "Ruby")
-# => "Bienvenue, Ruby !"
+# => "Welcome, Ruby!"
 ```
 
-La collection est figée à la fin de son initialisation. Toute tentative
-d'ajouter ensuite un callback lève une `FrozenError`.
+The collection is frozen at the end of initialization. Attempting to add a
+callback afterward raises `FrozenError`.
 
-### Ractors (Ruby 3.0 et versions ultérieures)
+### Ractors (Ruby 3.0 and later)
 
-Les blocs conservent leur contexte lexical et ne peuvent donc pas être partagés
-entre Ractors. Pour créer une collection partageable, enregistrez plutôt un
-objet partageable et l'une de ses méthodes :
+Blocks retain their lexical context and therefore cannot be shared between
+Ractors. To create a shareable collection, register a shareable receiver and
+one of its methods instead:
 
 ```ruby
 module Handlers
@@ -69,46 +98,47 @@ result
 # => 42
 ```
 
-Le troisième argument de `register` permet d'utiliser un nom de méthode
-différent du nom du callback :
+The third argument to `register` lets you use a method name that differs from
+the callback name:
 
 ```ruby
 collection.register(:total, Handlers, :sum)
 ```
 
-Le receveur enregistré et les données qu'il utilise doivent eux-mêmes respecter
-les règles de partage des Ractors. L'appel à `respond_with` reste identique.
-Sous Ruby 2.7, la gem et `register` restent utilisables normalement ; seule
-l'exécution avec `Ractor` est indisponible.
+The registered receiver and the data it uses must follow Ractor shareability
+rules. Calls to `respond_with` remain unchanged. On Ruby 2.7, the gem and
+`register` remain fully usable; only Ractor execution is unavailable. The gem
+does not create workers: the application retains control over their lifecycle
+and exchanged messages.
 
-## Développement
+## Development
 
 ```sh
 bundle install
 bundle exec rake
 ```
 
-La tâche par défaut exécute la suite Minitest et construit la gem dans `pkg/`.
-L'intégration continue GitHub Actions vérifie le projet avec Ruby 2.7 à 3.4,
-ainsi qu'avec la dernière version stable, Ruby 4.0.
+The default task runs the Minitest suite and builds the gem in `pkg/`. GitHub
+Actions checks the project with Ruby 2.7 through 3.4 and the latest stable
+release, Ruby 4.0.
 
-## Publication
+## Publishing
 
-La publication sur RubyGems utilise
-[Trusted Publishing](https://guides.rubygems.org/trusted-publishing/) et ne
-nécessite aucune clé API dans les secrets GitHub.
+RubyGems releases use
+[Trusted Publishing](https://guides.rubygems.org/trusted-publishing/) and do
+not require an API key in GitHub secrets.
 
-Avant la première publication, créez un *Pending Trusted Publisher* dans votre
-profil RubyGems avec les paramètres suivants :
+Before the first release, create a *Pending Trusted Publisher* in your RubyGems
+profile with these settings:
 
-- gem : `callback-collection`
-- propriétaire du dépôt : `nicolasva`
-- dépôt : `callback-collection`
-- workflow : `release.yml`
-- environnement GitHub : `release`
+- gem: `callback-collection`
+- repository owner: `nicolasva`
+- repository: `callback-collection`
+- workflow: `release.yml`
+- GitHub environment: `release`
 
-Publiez ensuite une version en poussant le tag correspondant à
-`CallbackCollection::VERSION` :
+Release a version by pushing the tag that matches
+`CallbackCollection::VERSION`:
 
 ```sh
 VERSION=$(ruby -Ilib -rcallback_collection/version -e 'print CallbackCollection::VERSION')
@@ -116,6 +146,6 @@ git tag "v${VERSION}"
 git push origin "v${VERSION}"
 ```
 
-GitHub Actions construit et publie alors la gem. RubyDoc génère
-automatiquement sa documentation, et les badges de version et de
-téléchargements deviennent actifs après la première publication.
+GitHub Actions then builds and publishes the gem. RubyDoc generates its
+documentation automatically, and the version and download badges update after
+publication.
