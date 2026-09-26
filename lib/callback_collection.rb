@@ -2,6 +2,15 @@
 
 require_relative "callback_collection/version"
 
+# Stores named callbacks during initialization, then exposes thread-safe reads.
+#
+# @example
+#   callbacks = CallbackCollection.new do |collection|
+#     collection.success { |value| "Received #{value}" }
+#   end
+#
+#   callbacks.respond_with(:success, "data")
+#   # => "Received data"
 class CallbackCollection
   def initialize
     callbacks
